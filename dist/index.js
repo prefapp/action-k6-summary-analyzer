@@ -2726,7 +2726,8 @@ exports["default"] = _default;
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const core = __nccwpck_require__(186)
-const { wait } = __nccwpck_require__(312)
+const fs = __nccwpck_require__(561)
+const { parseK6Summary } = __nccwpck_require__(35)
 
 /**
  * The main function for the action.
@@ -2734,18 +2735,14 @@ const { wait } = __nccwpck_require__(312)
  */
 async function run() {
   try {
-    const ms = core.getInput('milliseconds', { required: true })
+    const path = core.getInput('path', { required: true })
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    // Read the file
+    const k6Summary = JSON.parse(fs.readFileSync(path, 'utf8'))
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    const githubSummary = parseK6Summary(k6Summary)
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    await core.summary.addHeading('K6 Summary').addTable(githubSummary).write()
   } catch (error) {
     // Fail the workflow run if an error occurs
     core.setFailed(error.message)
@@ -2759,26 +2756,10 @@ module.exports = {
 
 /***/ }),
 
-/***/ 312:
+/***/ 35:
 /***/ ((module) => {
 
-/**
- * Wait for a number of milliseconds.
- *
- * @param {number} milliseconds The number of milliseconds to wait.
- * @returns {Promise<string>} Resolves with 'done!' after the wait is over.
- */
-async function wait(milliseconds) {
-  return new Promise(resolve => {
-    if (isNaN(milliseconds)) {
-      throw new Error('milliseconds not a number')
-    }
-
-    setTimeout(() => resolve('done!'), milliseconds)
-  })
-}
-
-module.exports = { wait }
+module.exports = eval("require")("./parse-k6-summary");
 
 
 /***/ }),
@@ -2836,6 +2817,14 @@ module.exports = require("https");
 
 "use strict";
 module.exports = require("net");
+
+/***/ }),
+
+/***/ 561:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:fs");
 
 /***/ }),
 
