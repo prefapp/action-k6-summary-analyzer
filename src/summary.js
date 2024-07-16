@@ -45,7 +45,7 @@ function parseK6Summary(summary) {
         ? value[metric]
         : value.value
 
-      row = [name, metric, pass, expectedValue, actualValue]
+      row = [name, metric, pass, expectedValue, actualValue.toString()]
 
       githubSummary.push(row)
     }
