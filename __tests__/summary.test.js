@@ -4,6 +4,8 @@
 const core = require('@actions/core')
 const main = require('../src/main')
 const path = require('node:path')
+const fs = require('node:fs')
+const { parseK6Summary } = require('../src/summary')
 
 // Mock the GitHub Actions core library
 const debugMock = jest.spyOn(core, 'debug').mockImplementation()
@@ -48,5 +50,13 @@ describe('action', () => {
       'time',
       expect.stringMatching(timeRegex)
     )
+  })
+
+  it.only('test', async () => {
+    const k6Summary = JSON.parse(
+      fs.readFileSync(path.join(__dirname, 'fixtures', 'summary.json'), 'utf8')
+    )
+
+    const githubSummary = parseK6Summary(k6Summary)
   })
 })

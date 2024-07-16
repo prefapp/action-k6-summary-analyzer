@@ -1,14 +1,16 @@
 function splitThreshold(threshold) {
-  index = Math.min(threshold.indexOf('<'), threshold.indexOf('>'))
+  index = Math.max(threshold.indexOf('<'), threshold.indexOf('>'))
 
   if (index === -1) {
     throw new Error('Invalid threshold format')
   }
 
-  return {
-    metric: threshold[index],
-    expectedValue: threshold.substring(index + 1)
+  const splittedThreshold = {
+    metric: threshold.substring(0, index),
+    expectedValue: threshold.substring(index)
   }
+
+  return splittedThreshold
 }
 
 function parseK6Summary(summary) {
@@ -28,6 +30,10 @@ function parseK6Summary(summary) {
   for (const [key, value] of Object.entries(metrics)) {
     const { thresholds } = value
 
+    if (thresholds === undefined) {
+      continue
+    }
+
     for (const [thresholdKey, thresholdValue] of Object.entries(thresholds)) {
       const name = key
 
@@ -35,12 +41,17 @@ function parseK6Summary(summary) {
 
       const { metric, expectedValue } = splitThreshold(thresholdKey)
 
-      const actualValue =
-        value[metric] !== undefined ? value[metric] : value[value]
+      const actualValue = value.hasOwnProperty(metric)
+        ? value[metric]
+        : value.value
 
-      githubSummary.push([name, metric, pass, expectedValue, actualValue])
+      row = [name, metric, pass, expectedValue, actualValue]
+
+      githubSummary.push(row)
     }
   }
+
+  return githubSummary
 }
 
 module.exports = {
