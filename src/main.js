@@ -1,6 +1,6 @@
 const core = require('@actions/core')
 const fs = require('node:fs')
-const { parseK6Summary } = require('./parse-k6-summary')
+const { parseK6Summary } = require('./summary')
 
 /**
  * The main function for the action.
