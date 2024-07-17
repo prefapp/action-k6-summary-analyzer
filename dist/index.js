@@ -2774,6 +2774,11 @@ function splitThreshold(threshold) {
   return splittedThreshold
 }
 
+function roundNumber(number, precision) {
+  const factor = Math.pow(10, precision)
+  return Math.round(number * factor) / factor
+}
+
 function parseK6Summary(summary) {
   const { metrics } = summary
 
@@ -2798,7 +2803,7 @@ function parseK6Summary(summary) {
     for (const [thresholdKey, thresholdValue] of Object.entries(thresholds)) {
       const name = key
 
-      const pass = thresholdValue === true ? '✅ Pass' : '❌ Fail'
+      const pass = thresholdValue !== true ? '✅ Pass' : '❌ Fail'
 
       const { metric, expectedValue } = splitThreshold(thresholdKey)
 
@@ -2806,7 +2811,13 @@ function parseK6Summary(summary) {
         ? value[metric]
         : value.value
 
-      row = [name, metric, pass, expectedValue, actualValue.toString()]
+      row = [
+        name,
+        metric,
+        pass,
+        expectedValue,
+        roundNumber(actualValue, 4).toString()
+      ]
 
       githubSummary.push(row)
     }
