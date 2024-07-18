@@ -2726,7 +2726,8 @@ exports["default"] = _default;
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const core = __nccwpck_require__(186)
-const { wait } = __nccwpck_require__(312)
+const fs = __nccwpck_require__(561)
+const { parseK6Summary } = __nccwpck_require__(259)
 
 /**
  * The main function for the action.
@@ -2734,18 +2735,14 @@ const { wait } = __nccwpck_require__(312)
  */
 async function run() {
   try {
-    const ms = core.getInput('milliseconds', { required: true })
+    const path = core.getInput('path', { required: true })
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    // Read the file
+    const k6Summary = JSON.parse(fs.readFileSync(path, 'utf8'))
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    const githubSummary = parseK6Summary(k6Summary)
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    await core.summary.addHeading('K6 Summary').addTable(githubSummary).write()
   } catch (error) {
     // Fail the workflow run if an error occurs
     core.setFailed(error.message)
@@ -2759,26 +2756,79 @@ module.exports = {
 
 /***/ }),
 
-/***/ 312:
+/***/ 259:
 /***/ ((module) => {
 
-/**
- * Wait for a number of milliseconds.
- *
- * @param {number} milliseconds The number of milliseconds to wait.
- * @returns {Promise<string>} Resolves with 'done!' after the wait is over.
- */
-async function wait(milliseconds) {
-  return new Promise(resolve => {
-    if (isNaN(milliseconds)) {
-      throw new Error('milliseconds not a number')
-    }
+function splitThreshold(threshold) {
+  index = Math.max(threshold.indexOf('<'), threshold.indexOf('>'))
 
-    setTimeout(() => resolve('done!'), milliseconds)
-  })
+  if (index === -1) {
+    throw new Error('Invalid threshold format')
+  }
+
+  const splittedThreshold = {
+    metric: threshold.substring(0, index),
+    expectedValue: threshold.substring(index)
+  }
+
+  return splittedThreshold
 }
 
-module.exports = { wait }
+function roundNumber(number, precision) {
+  const factor = Math.pow(10, precision)
+  return Math.round(number * factor) / factor
+}
+
+function parseK6Summary(summary) {
+  const { metrics } = summary
+
+  const githubSummaryHeader = [
+    { data: 'Name', header: true },
+    { data: 'Metric', header: true },
+    { data: 'Result', header: true },
+    { data: 'Expected value', header: true },
+    { data: 'Actual value', header: true }
+  ]
+
+  const githubSummary = [githubSummaryHeader]
+
+  // iterate over the metrics key and value pairs
+  for (const [key, value] of Object.entries(metrics)) {
+    const { thresholds } = value
+
+    if (thresholds === undefined) {
+      continue
+    }
+
+    for (const [thresholdKey, thresholdValue] of Object.entries(thresholds)) {
+      const name = key
+
+      const pass = thresholdValue !== true ? '✅ Pass' : '❌ Fail'
+
+      const { metric, expectedValue } = splitThreshold(thresholdKey)
+
+      const actualValue = value.hasOwnProperty(metric)
+        ? value[metric]
+        : value.value
+
+      row = [
+        name,
+        metric,
+        pass,
+        expectedValue,
+        roundNumber(actualValue, 4).toString()
+      ]
+
+      githubSummary.push(row)
+    }
+  }
+
+  return githubSummary
+}
+
+module.exports = {
+  parseK6Summary
+}
 
 
 /***/ }),
@@ -2836,6 +2886,14 @@ module.exports = require("https");
 
 "use strict";
 module.exports = require("net");
+
+/***/ }),
+
+/***/ 561:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:fs");
 
 /***/ }),
 

@@ -1,5 +1,6 @@
 const core = require('@actions/core')
-const { wait } = require('./wait')
+const fs = require('node:fs')
+const { parseK6Summary } = require('./summary')
 
 /**
  * The main function for the action.
@@ -7,18 +8,14 @@ const { wait } = require('./wait')
  */
 async function run() {
   try {
-    const ms = core.getInput('milliseconds', { required: true })
+    const path = core.getInput('path', { required: true })
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    // Read the file
+    const k6Summary = JSON.parse(fs.readFileSync(path, 'utf8'))
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    const githubSummary = parseK6Summary(k6Summary)
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    await core.summary.addHeading('K6 Summary').addTable(githubSummary).write()
   } catch (error) {
     // Fail the workflow run if an error occurs
     core.setFailed(error.message)
